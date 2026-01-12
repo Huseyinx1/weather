@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hava Durumu Uygulaması</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .weather-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            box-shadow: 
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weather-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .weather-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .input-group {
+            transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            transform: scale(1.02);
+        }
+
+        input:focus {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .weather-icon {
+            animation: float 3s ease-in-out infinite;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        .temp-display {
+            font-size: 5rem;
+            font-weight: 800;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .info-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .error-message {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div class="container max-w-md mx-auto">
+        <div class="weather-card p-8 text-white">
+            <!-- Başlık -->
+            <div class="text-center mb-8 fade-in">
+                <h1 class="text-5xl font-bold mb-3">
+                    <i class="fas fa-cloud-sun mr-3"></i>
+                    Hava Durumu
+                </h1>
+                <p class="text-white/90 text-lg">Şehir adını girin ve hava durumunu öğrenin</p>
+            </div>
+
+            <!-- Arama Kutusu -->
+            <div class="mb-6 input-group fade-in">
+                <div class="flex gap-3">
+                    <input 
+                        type="text" 
+                        id="cityInput" 
+                        placeholder="Şehir adı girin (örn: İstanbul, Ankara)"
+                        class="flex-1 px-5 py-4 rounded-xl bg-white/20 border-2 border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-0 focus:border-white/50 focus:bg-white/25 transition-all text-lg"
+                    >
+                    <button 
+                        id="searchBtn"
+                        class="px-7 py-4 bg-white/30 hover:bg-white/40 rounded-xl border-2 border-white/30 transition-all duration-300 text-xl"
+                        title="Ara"
+                    >
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hata Mesajı -->
+            <div id="errorMessage" class="hidden mb-4 p-4 bg-red-500/40 border-2 border-red-400/60 rounded-xl text-center error-message backdrop-blur-sm">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Hava Durumu Bilgileri -->
+            <div id="weatherInfo" class="hidden fade-in">
+                <!-- Şehir Adı -->
+                <div class="text-center mb-6">
+                    <h2 id="cityName" class="text-4xl font-bold mb-2"></h2>
+                    <p id="dateTime" class="text-white/80 text-lg"></p>
+                </div>
+
+                <!-- Hava Durumu İkonu ve Sıcaklık -->
+                <div class="text-center mb-8">
+                    <div id="weatherIcon" class="weather-icon text-9xl mb-4"></div>
+                    <div class="temp-display mb-2" id="temperature"></div>
+                    <p id="description" class="text-2xl text-white/95 capitalize mt-3 font-semibold"></p>
+                </div>
+
+                <!-- Detaylar -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="info-card rounded-xl p-5 text-center">
+                        <i class="fas fa-tint text-3xl mb-3 text-blue-200"></i>
+                        <p class="text-sm text-white/80 mb-2 font-medium">Nem Oranı</p>
+                        <p id="humidity" class="text-3xl font-bold"></p>
+                    </div>
+                    <div class="info-card rounded-xl p-5 text-center">
+                        <i class="fas fa-wind text-3xl mb-3 text-green-200"></i>
+                        <p class="text-sm text-white/80 mb-2 font-medium">Rüzgar</p>
+                        <p id="windSpeed" class="text-3xl font-bold"></p>
+                    </div>
+                </div>
+
+                <!-- Hissedilen Sıcaklık ve Diğer Bilgiler -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="info-card rounded-xl p-4 text-center">
+                        <i class="fas fa-thermometer-half text-2xl mb-2 text-orange-200"></i>
+                        <p class="text-xs text-white/70 mb-1">Hissedilen</p>
+                        <p id="feelsLike" class="text-xl font-bold"></p>
+                    </div>
+                    <div class="info-card rounded-xl p-4 text-center">
+                        <i class="fas fa-eye text-2xl mb-2 text-purple-200"></i>
+                        <p class="text-xs text-white/70 mb-1">Görüş</p>
+                        <p id="visibility" class="text-xl font-bold"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Yükleme Animasyonu -->
+            <div id="loading" class="hidden text-center py-8">
+                <div class="spinner mb-4"></div>
+                <p class="text-white/90 text-lg">Yükleniyor...</p>
+            </div>
+        </div>
+
+        <!-- Bilgilendirme -->
+        <div class="mt-6 text-center text-white/90 text-sm">
+            <p><i class="fas fa-check-circle mr-2 text-green-300"></i> API anahtarı gerektirmez - Hemen kullanmaya başlayın!</p>
+        </div>
+    </div>
+
+    <script>
+        // Open-Meteo API - Ücretsiz ve API anahtarı gerektirmez
+        const GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
+        const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
+
+        // DOM Elementleri
+        const cityInput = document.getElementById('cityInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const weatherInfo = document.getElementById('weatherInfo');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const loading = document.getElementById('loading');
+
+        // Hava durumu ikonları mapping
+        const weatherIcons = {
+            'clear': '☀️',
+            'sunny': '☀️',
+            'partly-cloudy': '⛅',
+            'cloudy': '☁️',
+            'overcast': '☁️',
+            'rain': '🌧️',
+            'drizzle': '🌦️',
+            'snow': '❄️',
+            'thunderstorm': '⛈️',
+            'fog': '🌫️',
+            'mist': '🌫️'
+        };
+
+        // Enter tuşu ile arama
+        cityInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchWeather();
+            }
+        });
+
+        // Buton tıklama ile arama
+        searchBtn.addEventListener('click', searchWeather);
+
+        // Hava durumu arama fonksiyonu
+        async function searchWeather() {
+            const city = cityInput.value.trim();
+            
+            if (!city) {
+                showError('Lütfen bir şehir adı girin!');
+                return;
+            }
+
+            // UI güncellemeleri
+            hideError();
+            hideWeatherInfo();
+            showLoading();
+
+            try {
+                // Önce şehir koordinatlarını al
+                const geoResponse = await fetch(
+                    `${GEOCODING_API}?name=${encodeURIComponent(city)}&count=1&language=tr&format=json`
+                );
+
+                if (!geoResponse.ok) {
+                    throw new Error('Şehir bilgisi alınamadı. Lütfen tekrar deneyin.');
+                }
+
+                const geoData = await geoResponse.json();
+
+                if (!geoData.results || geoData.results.length === 0) {
+                    throw new Error('Şehir bulunamadı. Lütfen geçerli bir şehir adı girin.');
+                }
+
+                const location = geoData.results[0];
+                const latitude = location.latitude;
+                const longitude = location.longitude;
+                const cityName = location.name || city;
+
+                // Hava durumu verilerini al
+                const weatherResponse = await fetch(
+                    `${WEATHER_API}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&hourly=visibility&timezone=auto`
+                );
+
+                if (!weatherResponse.ok) {
+                    throw new Error('Hava durumu bilgisi alınamadı. Lütfen tekrar deneyin.');
+                }
+
+                const weatherData = await weatherResponse.json();
+                displayWeather(weatherData, cityName);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Hava durumu bilgilerini göster
+        function displayWeather(data, cityName) {
+            const current = data.current;
+            
+            // Şehir adı ve tarih
+            document.getElementById('cityName').textContent = cityName;
+            document.getElementById('dateTime').textContent = formatDateTime(new Date());
+
+            // Sıcaklık
+            const temp = Math.round(current.temperature_2m);
+            document.getElementById('temperature').innerHTML = 
+                `${temp}<span class="text-4xl">°C</span>`;
+
+            // Hissedilen sıcaklık
+            const feelsLike = Math.round(current.apparent_temperature);
+            document.getElementById('feelsLike').textContent = `${feelsLike}°C`;
+
+            // Hava durumu açıklaması ve ikonu
+            const weatherCode = current.weather_code;
+            const weatherDesc = getWeatherDescription(weatherCode);
+            const weatherIcon = getWeatherIcon(weatherCode);
+            
+            document.getElementById('description').textContent = weatherDesc;
+            document.getElementById('weatherIcon').textContent = weatherIcon;
+
+            // Nem
+            document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
+
+            // Rüzgar hızı (m/s'den km/h'ye çevir)
+            const windSpeed = Math.round(current.wind_speed_10m * 3.6);
+            document.getElementById('windSpeed').textContent = `${windSpeed} km/h`;
+
+            // Görüş mesafesi
+            const visibility = data.hourly?.visibility?.[0];
+            if (visibility) {
+                const visibilityKm = (visibility / 1000).toFixed(1);
+                document.getElementById('visibility').textContent = `${visibilityKm} km`;
+            } else {
+                document.getElementById('visibility').textContent = 'N/A';
+            }
+
+            // Bilgileri göster
+            showWeatherInfo();
+        }
+
+        // Weather code'dan açıklama al
+        function getWeatherDescription(code) {
+            const descriptions = {
+                0: 'Açık gökyüzü',
+                1: 'Çoğunlukla açık',
+                2: 'Kısmen bulutlu',
+                3: 'Kapalı',
+                45: 'Sisli',
+                48: 'Donlu sis',
+                51: 'Hafif çisenti',
+                53: 'Orta çisenti',
+                55: 'Yoğun çisenti',
+                56: 'Hafif donan çisenti',
+                57: 'Yoğun donan çisenti',
+                61: 'Hafif yağmur',
+                63: 'Orta yağmur',
+                65: 'Yoğun yağmur',
+                66: 'Hafif donan yağmur',
+                67: 'Yoğun donan yağmur',
+                71: 'Hafif kar',
+                73: 'Orta kar',
+                75: 'Yoğun kar',
+                77: 'Kar taneleri',
+                80: 'Hafif sağanak',
+                81: 'Orta sağanak',
+                82: 'Yoğun sağanak',
+                85: 'Hafif kar sağanağı',
+                86: 'Yoğun kar sağanağı',
+                95: 'Fırtına',
+                96: 'Dolu ile fırtına',
+                99: 'Şiddetli dolu ile fırtına'
+            };
+            return descriptions[code] || 'Bilinmeyen';
+        }
+
+        // Weather code'dan ikon al
+        function getWeatherIcon(code) {
+            if (code === 0 || code === 1) return '☀️';
+            if (code === 2) return '⛅';
+            if (code === 3) return '☁️';
+            if (code >= 45 && code <= 48) return '🌫️';
+            if (code >= 51 && code <= 57) return '🌦️';
+            if (code >= 61 && code <= 67) return '🌧️';
+            if (code >= 71 && code <= 77) return '❄️';
+            if (code >= 80 && code <= 86) return '🌧️';
+            if (code >= 95 && code <= 99) return '⛈️';
+            return '🌤️';
+        }
+
+        // Tarih ve saat formatla
+        function formatDateTime(date) {
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('tr-TR', options);
+        }
+
+        // Hata mesajı göster
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            weatherInfo.classList.add('hidden');
+        }
+
+        // Hata mesajını gizle
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+        // Hava durumu bilgilerini göster
+        function showWeatherInfo() {
+            weatherInfo.classList.remove('hidden');
+        }
+
+        // Hava durumu bilgilerini gizle
+        function hideWeatherInfo() {
+            weatherInfo.classList.add('hidden');
+        }
+
+        // Yükleme animasyonunu göster
+        function showLoading() {
+            loading.classList.remove('hidden');
+        }
+
+        // Yükleme animasyonunu gizle
+        function hideLoading() {
+            loading.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
